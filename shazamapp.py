@@ -10,6 +10,7 @@ currentDirectory = os.getcwd()
 @click.option('--n', '-n', is_flag=True, help='Rename the files to the extracted metadata.')
 def main(path, r, n):
     """ShazamApp reads all audio files from the specified folder, attempts to identify them, and if successful, sets the extracted audio file information to metadata. Let ShazamApp automatically organize your entire audio library."""
+    path = os.path.abspath(path)
     if os.path.isdir(path):
       click.echo(f"Path: {path}")
       click.echo(f"Include subfolders: {r}")
