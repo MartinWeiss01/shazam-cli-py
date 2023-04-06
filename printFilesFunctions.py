@@ -14,11 +14,13 @@ def print_files_recursively(folder_path):
 
 
 # Vypíše všechny soubory včetně těch v podsložách
-def print_files(directory_path):
+def identify_folder_files(directory_path, is_recursive, is_rename):
     for root, dirs, files in os.walk(directory_path):
         for filename in files:
            # file_path = os.path.join(root, filename)
             print(filename) # Zmenit na file_path pokud chces celou cestu k souboru + odkomentovat radek nad tim
+        if not is_recursive:
+            break
 
 
 
