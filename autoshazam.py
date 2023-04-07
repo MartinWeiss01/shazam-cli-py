@@ -4,6 +4,7 @@ from ShazamAPI import Shazam as ShazamAPI
 import asyncio
 from shazamio import Shazam as ShazamIO
 import music_tag
+import requests
 
 class FormattedString():
   SUCCESS = '\033[92m'
@@ -30,7 +31,14 @@ class ShazamManager:
     loop = asyncio.get_event_loop()
     shazamio_result = loop.run_until_complete(self.async_shazamio_recognizer())
     if("track" in shazamio_result):
-      return {"success": True, "author": shazamio_result["track"]["subtitle"], "song": shazamio_result["track"]["title"]}
+      imageUrl = None
+      if("images" in shazamio_result["track"]):
+        if("coverarthq" in shazamio_result["track"]["images"]):
+          imageUrl = shazamio_result["track"]["images"]["coverarthq"]
+        else:
+          if("coverart" in shazamio_result["track"]["images"]):
+            imageUrl = shazamio_result["track"]["images"]["coverart"]
+      return {"success": True, "author": shazamio_result["track"]["subtitle"], "song": shazamio_result["track"]["title"], "imageUrl": imageUrl}
     else:
       return {"success": False}
   ### ShazamIO Recognizer =========================
@@ -42,7 +50,14 @@ class ShazamManager:
     recognize_generator = shazam_api.recognizeSong()
     matched = next(recognize_generator)[1]
     if("track" in matched):
-      return {"success": True, "author": matched["track"]["subtitle"], "song": matched["track"]["title"]}
+      imageUrl = None
+      if("images" in matched["track"]):
+        if("coverarthq" in matched["track"]["images"]):
+          imageUrl = matched["track"]["images"]["coverarthq"]
+        else:
+          if("coverart" in matched["track"]["images"]):
+            imageUrl = matched["track"]["images"]["coverart"]
+      return {"success": True, "author": matched["track"]["subtitle"], "song": matched["track"]["title"], "imageUrl": imageUrl}
     else:
       return {"success": False}
   ### ShazamAPI Recognizer =========================
@@ -56,9 +71,14 @@ class ShazamManager:
 
     fetched_tags = result['shazamio']
     if fetched_tags['success']:
+      # Load current file and set the tags if the recognition was successful
       file_handler = music_tag.load_file(self.file_path)
       file_handler['artist'] = fetched_tags['author']
       file_handler['title'] = fetched_tags['song']
+      # Check for album artwork, if available, set it to the file
+      response = requests.get(fetched_tags['imageUrl'])
+      if response.status_code == 200:
+        file_handler['artwork'] = response.content
       file_handler.save()
     return result['shazamio']
 # ShazamApp - End
