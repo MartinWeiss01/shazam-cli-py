@@ -1,1 +1,3 @@
 click==8.1.3
+shazamio==0.3.1.1
+ShazamAPI==0.0.2
