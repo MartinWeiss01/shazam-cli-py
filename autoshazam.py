@@ -1,11 +1,22 @@
 import os
-
-# ShazamApp - AutoShazam
 import sys
 from ShazamAPI import Shazam as ShazamAPI
 import asyncio
 from shazamio import Shazam as ShazamIO
+import music_tag
 
+class FormattedString():
+  SUCCESS = '\033[92m'
+  WARNING = '\033[93m'
+  ERROR = '\033[91m'
+  INFO = '\033[94m'
+  CYAN = '\033[96m'
+  PURPLE = '\033[95m'
+  BOLD = '\033[1m'
+  UNDERLINE = '\033[4m'
+  END = '\033[0m'
+
+# ShazamApp - AutoShazam
 class ShazamManager:
   def __init__(self, file_path):
     self.file_path = file_path
@@ -39,39 +50,48 @@ class ShazamManager:
   def recognize_song(self):
     result = {}
     #ShazamAPI 
-    result['shazamapi'] = self.shazamapi_recognize()
+    #result['shazamapi'] = self.shazamapi_recognize()
     #ShazamIO
     result['shazamio'] = self.shazamio_recognize()
-    return result
-# ShazamApp - End
 
-class ColoredInput:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    fetched_tags = result['shazamio']
+    if fetched_tags['success']:
+      file_handler = music_tag.load_file(self.file_path)
+      file_handler['artist'] = fetched_tags['author']
+      file_handler['title'] = fetched_tags['song']
+      file_handler.save()
+    return result['shazamio']
+# ShazamApp - End
 
 allowed_file_types = ['.aac', '.aiff', '.dsf', '.flac', '.m4a', '.mp3', '.ogg', '.opus', '.wav', '.wv']
 
 def is_file_type_allowed(file_extension):
   return file_extension in allowed_file_types
 
+def rename_file(file_abs_path, file_new_name):
+  path_parts = os.path.split(file_abs_path)
+  file_extension = os.path.splitext(file_abs_path)[1]
+  new_file_name_with_extension = file_new_name + file_extension
+  new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
+  os.rename(file_abs_path, new_file_path)
+  print(f"{FormattedString().INFO}<< file renamed to: {new_file_name_with_extension}>>{FormattedString().END}")
+
 def identify_file(file_path, rename):
   file_extension = os.path.splitext(file_path)[1]
   if is_file_type_allowed(file_extension):
-    print(f"{ColoredInput().OKGREEN}[ShazamApp] Identifying {file_extension} file: {file_path}{ColoredInput().ENDC}")
+    print(f"\r{FormattedString().CYAN}[ShazamApp] Identifying {file_path}{FormattedString().END}", end='', flush=True)
     shazam_manager = ShazamManager(file_path)
     result = shazam_manager.recognize_song()
-    print(f"{ColoredInput().OKCYAN}[ShazamApp] ShazamApp result: {result}{ColoredInput().ENDC}")
-    #if rename:
-    #  print(f"{ColoredInput().OKBLUE}[ShazamApp] Renaming this file...{ColoredInput().ENDC}")
+    if result['success']:
+      print(f"\n{FormattedString().SUCCESS}[ShazamApp] Found match for {result['author']} - {result['song']} {FormattedString().END}", end='' if rename else '\n', flush=True)
+
+      if rename:
+        file_new_name = result['author'] + " - " + result['song']
+        rename_file(file_path, file_new_name)
+    else:
+      print(f"\r{FormattedString().ERROR}[ShazamApp] No match found for {file_path}{FormattedString().END}")
   else:
-    print(f"{ColoredInput().WARNING}[ShazamApp] Skipping {file_extension} file: {file_path}{ColoredInput().ENDC}")
+    print(f"{FormattedString().WARNING}[ShazamApp] Skipping {file_extension} file: {file_path}{FormattedString().END}")
 
 def identify_folder_files(directory_path, is_recursive, is_rename):
     for root, dirs, files in os.walk(directory_path):
