@@ -21,7 +21,7 @@ $ pip install -r requirements.txt
 The application can be run without arguments, in which case the application only loads files from the folder it is currently in and does not rename files if the song is successfully identified
 
 ```
-$ python main.py
+$ python app.py
 ```
 
 ## Options
