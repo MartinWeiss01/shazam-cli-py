@@ -10,7 +10,6 @@ You need to have [ffmpeg](https://ffmpeg.org/) and ffprobe installed and added t
 
 > If you are using Linux, you can use [package manager depending on your distribution](https://ffmpeg.org/download.html#build-linux)
 
-
 You also need to install all the required packages included in requirements.txt
 
 ```
@@ -22,14 +21,16 @@ $ pip install -r requirements.txt
 The application can be run without arguments, in which case the application only loads files from the folder it is currently in and does not rename files if the song is successfully identified
 
 ```
-$ python shazamapp.py
+$ python main.py
 ```
 
 ## Options
 
-| Argument name        | Description                                                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| --path, -p TEXT | The specific path to the folder in which the files will be browsed. If the value is not set manually, the current folder is automatically taken. |
-| --r, -r              | Browse subfolders and check the files in them.                                                                                                   |
-| --n, -n              | Rename the files to the extracted metadata.                                                                                                      |
-| --help               | Show Usage & Options and exit.                                                                                                                   |
+| Argument name   | Description                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --path, -f TEXT | The specific path to the folder in which the files will be browsed. If the value is not set manually, the current folder is automatically taken.     |
+| --recursive, -r | Include files from all subfolders for the track identification.                                                                                      |
+| --rename, -n    | If this parameter is set, the file name of each successfully identified song is renamed in the format: ARTIST - SONG.                                |
+| --preview, -p   | If this parameter is set, identification details will be printed on the output, but no changes will be made to the files (rename nor ID3 tags edit). |
+| --version, -v   | Prints the current version of the ShazamApp.                                                                                                         |
+| --help          | Show Usage & Options and exit.                                                                                                                       |
