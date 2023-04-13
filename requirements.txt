@@ -2,3 +2,4 @@ click==8.1.3
 shazamio==0.3.1.1
 music-tag==0.4.3
 requests==2.28.2
+python3-discogs-client==2.6
