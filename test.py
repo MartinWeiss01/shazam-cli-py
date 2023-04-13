@@ -2,61 +2,55 @@ import discogs_client
 
 d = discogs_client.Client('MyApp', user_token='ZxOYlSZlyJrjGopmaEoHzbwbdayDeqgcnLZaKbkY')
 
-def print_song_info(song, artist):
+def get_track_details(track_name, artist, year):
+    results = d.search(track_name, artist=artist, year=year, type='master')
+    if(len(results) == 0):
+        return {"success": False}
+    else:
+        release = results[0]
 
+        track = None
+        duration = None
+        artists = []
+        album = None
+        labels = []
+        genres = []
+        year = None
+        position = None
 
-        results = d.search(song, artist=artist, type='release')
+        for t in release.tracklist:
+            if t.title.lower() == track_name.lower():
+                track = t
+                break
 
+        if hasattr(track, "artists"):
+            artists = [a.name for a in track.artists]
 
-        if(len(results)== 0):
-            return {"success": False}
-        else:
+        if hasattr(track, "position"):
+            position = track.position
+        
+        if hasattr(release, "title"):
+            album = release.title
 
-            release = results[0]
+            if track is not None:
+                if hasattr(track, "duration"):
+                    duration = track.duration
 
-            track = None
-
-            for t in release.tracklist:
-                if t.title == song:
-                    track = t
-                    break
-
-            if release.artists:
-                print("Artist(s):", ", ".join([a.name for a in release.artists]))
+                if hasattr(track, "title"):
+                    track = track.title
             else:
-                print("Artist(s): N/A ")
+                track = album
+        
+        if hasattr(release, "labels"):
+            labels = [l.name for l in release.labels]
 
-            if release.title:
-                print("Title: " + release.title)
-            else:
-                print("Title: N/A ")
-
-            if release.labels:
-                print("Label:", release.labels[0].name)
-            else:
-                print("Label: N/A")
-
-            if release.year:
-                print("Release year: " + str(release.year))
-            else:
-                print("Release year: N/A")
-
-            if release.genres:
-                print("Genres:", ", ".join(release.genres))
-            else:
-                print("Genres: N/A")
-
-            if track is not None and track.duration:
-                print("Length:", track.duration)
-            else:
-                print("Length: N/A")
-
-            return {"success": True}
-
-
-print_song_info('Wait And Bleed', 'Slipknot')
-
-
+        if hasattr(release, "year"):
+            year = release.year
+        
+        if hasattr(release, "genres"):
+            genres = release.genres
+        
+        return {"success": True, "duration": duration, "artists": artists, "album": album, "track": track, "labels": labels, "genres": genres, "year": year, "position": position}
 
 
 
