@@ -5,13 +5,16 @@ from shazamio import Shazam as ShazamIO
 import music_tag
 import requests
 from formattedstring import FormattedString
+import discogs
 
 class ShazamAppTrack:
-  def __init__(self, file_path, is_rename, is_preview):
+  def __init__(self, file_path, is_rename, is_preview, is_strict, discogs_api):
     # Manager properties
     self.file_path = file_path
     self.is_rename = is_rename
     self.is_preview = is_preview
+    self.is_strict = is_strict
+    self.discogs_api = discogs_api
     # Default tag values
     self.artist = ""
     self.song = ""
@@ -91,6 +94,33 @@ class ShazamAppTrack:
       file_handler['artwork'] = response.content
     file_handler.save()
 
+  def is_strict_match(self):
+    if(self.is_strict):
+      if(self.discogs_api == ""):
+        print(f"{FormattedString().WARNING}[ShazamApp] Strict mode is enabled and no Discogs API key was provided. Skipping strict mode...{FormattedString().END}")
+        return True
+      else:
+        discogs_result = discogs.get_track_details(self.song, self.artist, self.released, self.discogs_api)
+        if discogs_result is not None and discogs_result['success']:
+          file_handler = music_tag.load_file(self.file_path)
+          file_duration = str(file_handler["#length"])
+          found_duration = discogs_result['duration']
+
+          if found_duration != "" and file_duration != "":
+            #Convert found duration from MIN:SEC to seconds
+            found_duration = float(found_duration.split(":")[0]) * 60 + int(found_duration.split(":")[1])
+            if abs(found_duration - float(file_duration)) > 5:
+              print(f"{FormattedString().WARNING}[ShazamApp] Strict mode is enabled and the track duration is not matching. Skipping track...{FormattedString().END}")
+              return False
+            else:
+              return True
+          else:
+            return True
+        else:
+          return True
+    else:
+      return True
+
   def identify_track(self):
     print(f"\r{FormattedString().CYAN}[ShazamApp] Identifying {self.file_path}{FormattedString().END}",
       end='', flush=True
@@ -103,8 +133,9 @@ class ShazamAppTrack:
       )
 
       if self.is_preview is False:
-        self.__update_id3_tags()
-        if self.is_rename:
-          self.__rename_file()
+        if self.is_strict_match():
+          self.__update_id3_tags()
+          if self.is_rename:
+            self.__rename_file()
     else:
       print(f"\r{FormattedString().ERROR}[ShazamApp] No match found for {self.file_path}{FormattedString().END}")
