@@ -6,6 +6,11 @@ import music_tag
 import requests
 from formattedstring import FormattedString
 import discogs
+from app import VERSION
+from datetime import datetime
+import errors
+
+INVALID_FILENAME_CHARS = "/\\:*?\"<>|"
 
 class ShazamAppTrack:
   def __init__(self, file_path, is_rename, is_preview, is_strict, discogs_api):
@@ -29,8 +34,13 @@ class ShazamAppTrack:
 
   # ================== ShazamIO Recognizer ================== #
   async def __async_shazamio_recognizer(self):
-    shazam_io = ShazamIO()
-    return await shazam_io.recognize_song(self.file_path)
+    try:
+      shazam_io = ShazamIO()
+      return await shazam_io.recognize_song(self.file_path)
+    except KeyboardInterrupt:
+      raise KeyboardInterrupt()
+    except:
+      raise errors.InvalidFileType()
   
   def __get_track_details(self):
     loop = asyncio.get_event_loop()
@@ -76,6 +86,10 @@ class ShazamAppTrack:
 
   def __rename_file(self):
     file_new_name = self.artist + " - " + self.song
+    
+    for char in INVALID_FILENAME_CHARS:
+      file_new_name = file_new_name.replace(char, "_")
+
     path_parts = os.path.split(self.file_path)
     file_extension = os.path.splitext(self.file_path)[1]
     new_file_name_with_extension = file_new_name + file_extension
