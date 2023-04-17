@@ -6,6 +6,11 @@ import music_tag
 import requests
 from formattedstring import FormattedString
 import discogs
+from app import VERSION
+from datetime import datetime
+import errors
+
+INVALID_FILENAME_CHARS = "/\\:*?\"<>|"
 
 class ShazamAppTrack:
   def __init__(self, file_path, is_rename, is_preview, is_strict, discogs_api):
@@ -18,7 +23,7 @@ class ShazamAppTrack:
     # Default tag values
     self.artist = ""
     self.song = ""
-    self.isrc = None
+    self.isrc = ""
     self.genres = []
     self.album = None
     self.label = None
@@ -29,8 +34,13 @@ class ShazamAppTrack:
 
   # ================== ShazamIO Recognizer ================== #
   async def __async_shazamio_recognizer(self):
-    shazam_io = ShazamIO()
-    return await shazam_io.recognize_song(self.file_path)
+    try:
+      shazam_io = ShazamIO()
+      return await shazam_io.recognize_song(self.file_path)
+    except KeyboardInterrupt:
+      raise KeyboardInterrupt()
+    except:
+      raise errors.InvalidFileType()
   
   def __get_track_details(self):
     loop = asyncio.get_event_loop()
@@ -41,7 +51,7 @@ class ShazamAppTrack:
       # Default tag values (some data are wrapped so we have to be careful)
       self.artist = track['subtitle'] if 'subtitle' in track else ""
       self.song = track['title'] if 'title' in track else ""
-      self.isrc = track['isrc'] if 'isrc' in track else None
+      self.isrc = track['isrc'] if 'isrc' in track else ""
       self.genres = [genre for genre in track['genres'].values()] if 'genres' in track else []
 
       # Get album artwork URL if available
@@ -76,28 +86,70 @@ class ShazamAppTrack:
 
   def __rename_file(self):
     file_new_name = self.artist + " - " + self.song
+    
+    for char in INVALID_FILENAME_CHARS:
+      file_new_name = file_new_name.replace(char, "_")
+
     path_parts = os.path.split(self.file_path)
     file_extension = os.path.splitext(self.file_path)[1]
     new_file_name_with_extension = file_new_name + file_extension
     new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
     os.rename(self.file_path, new_file_path)
     self.file_path = new_file_path
-    print(f" {FormattedString().INFO}<< file renamed to: {new_file_name_with_extension} >>{FormattedString().END}")
+    #print(f" {FormattedString().INFO}<< file renamed to: {new_file_name_with_extension} >>{FormattedString().END}")
 
   def __update_id3_tags(self):
     file_handler = music_tag.load_file(self.file_path)
+    file_handler.append_tag('comment', f"# ShazamApp {VERSION} Changes, {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+
+    if self.is_rename:
+      file_handler.append_tag('comment', f"\n[Rename] {os.path.basename(self.file_path)} -> {self.artist} - {self.song}")
+
+    file_handler.append_tag('comment', f"\n[Artist] {file_handler['artist']} -> {self.artist}")
     file_handler['artist'] = self.artist
+    file_handler.append_tag('comment', f"\n[Track name] {file_handler['title']} -> {self.song}")
     file_handler['title'] = self.song
+
+    if self.album is not None:
+      file_handler.append_tag('comment', f"\n[Album] {file_handler['album']} -> {self.album}")
+      file_handler['album'] = self.album
+    if self.released is not None:
+      file_handler.append_tag('comment', f"\n[Year] {file_handler['year']} -> {self.released}")
+      file_handler['year'] = self.released
+    if self.isrc != "":
+      file_handler.append_tag('comment', f"\n[ISRC] {file_handler['isrc']} -> {self.isrc}")
+      file_handler['isrc'] = self.isrc
+
+    # In case there are some lyrics, reset the existing ones and add the new ones
+    if self.lyrics != []:
+      file_handler.append_tag('comment', "\n[Lyrics] Added")
+      file_handler['lyrics'] = ""
+
+    for lyrics in self.lyrics:
+      file_handler.append_tag('lyrics', "\n" + lyrics)
+
+    file_genres = file_handler['genre'].values
+    file_handler.append_tag('comment', f"\n[Genres] Added")
+
+    for genre in self.genres:
+      if genre not in file_genres:
+        file_handler.append_tag('comment', genre + " ")
+        file_handler.append_tag('genre', genre)
     # Check for album artwork, if available, set it to the file
     response = requests.get(self.imageUrl)
     if response.status_code == 200:
-      file_handler['artwork'] = response.content
+      try:
+        file_handler['artwork'] = response.content
+        file_handler.append_tag('comment', f"\n[Album Artwork] Added")
+      except:
+        self.imageUrl = None
+
     file_handler.save()
 
   def is_strict_match(self):
     if(self.is_strict):
       if(self.discogs_api == ""):
-        print(f"{FormattedString().WARNING}[ShazamApp] Strict mode is enabled and no Discogs API key was provided. Skipping strict mode...{FormattedString().END}")
+        print(f"\n{FormattedString().WARNING}[ShazamApp] Strict mode is enabled and no Discogs API key was provided. Ignoring strict mode...{FormattedString().END}")
         return True
       else:
         discogs_result = discogs.get_track_details(self.song, self.artist, self.released, self.discogs_api)
@@ -121,16 +173,40 @@ class ShazamAppTrack:
     else:
       return True
 
+  def print_track_details(self):
+    print(f"\r{FormattedString().SUCCESS}[ShazamApp] {os.path.basename(self.file_path)} >>> {self.artist} – {self.song}{FormattedString().END}", end='', flush=True)
+
+    print(f" {FormattedString().INFO}[", end = "", flush = True)
+    tag_comma = ""
+
+    if self.album is not None:
+      print(f"{tag_comma} album: {self.album}", end = "", flush = True)
+      tag_comma = ","
+    if self.released is not None:
+      print(f"{tag_comma} year: {self.released}", end = "", flush = True)
+      tag_comma = ","
+    if self.isrc != "":
+      print(f"{tag_comma} ISRC: {self.isrc}", end = "", flush = True)
+      tag_comma = ","
+
+    if self.genres is not []:
+      print(f"{tag_comma} genres: {self.genres}", end = "", flush = True)
+      tag_comma = ","
+    
+    if self.lyrics != []:
+      print(f"{tag_comma} with lyrics", end = "", flush = True)
+      tag_comma = ","
+
+    print (f" ] {FormattedString().END}")
+
   def identify_track(self):
-    print(f"\r{FormattedString().CYAN}[ShazamApp] Identifying {self.file_path}{FormattedString().END}",
+    print(f"\r{FormattedString().PURPLE}[ShazamApp] Identifying {self.file_path}{FormattedString().END}",
       end='', flush=True
     )
     result = self.__get_track_details()
 
     if result:
-      print(f"\n{FormattedString().SUCCESS}[ShazamApp] Found match for {self.artist} - {self.song}{FormattedString().END}",
-        end='' if self.is_rename and self.is_preview is not True else '\n', flush=True
-      )
+      self.print_track_details()
 
       if self.is_preview is False:
         if self.is_strict_match():
