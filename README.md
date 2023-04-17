@@ -28,7 +28,7 @@ $ python app.py
 
 | Argument name   | Description                                                                                                                                                                                                          |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| --path, -f TEXT | The specific path to the folder in which the files will be browsed. If the value is not set manually, the current folder is automatically taken.                                                                     |
+| --path, -f TEXT | Path to the specific file or folder in which the files will be browsed. If the value is not set manually, the current folder is automatically taken.                                                                 |
 | --recursive, -r | Include files from all subfolders for the track identification.                                                                                                                                                      |
 | --rename, -n    | If this parameter is set, the file name of each successfully identified song is renamed in the format: ARTIST - SONG.                                                                                                |
 | --preview, -p   | If this parameter is set, identification details will be printed on the output, but no changes will be made to the files (rename nor ID3 tags edit).                                                                 |
