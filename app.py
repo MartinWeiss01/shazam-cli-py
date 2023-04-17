@@ -16,7 +16,15 @@ currentDirectory = os.getcwd()
 @click.option('--token', default="", help='Discogs Personal Access Token. You can get it here: https://www.discogs.com/settings/developers')
 
 def main(path, recursive, rename, preview, version, strict, token):
-    """ShazamApp reads all audio files from the specified folder, attempts to identify them, and if successful, sets the extracted audio file information to metadata. Let ShazamApp automatically organize your entire audio library."""
+    """ShazamApp reads all audio files from the specified folder, attempts to identify them, and if successful, sets the extracted audio file information to metadata.
+    Let ShazamApp automatically organize your entire audio library.
+
+    
+    Supported file types: .aac, .aiff, .dsf, .flac, .m4a, .mp3, .ogg, .opus, .wav, .wv
+
+
+    [! FFMPEG IS REQUIRED !]
+    """
     if version:
         click.secho(f"ShazamApp version: {VERSION}", fg='green')
         return
