@@ -2,15 +2,19 @@ import os
 from shazamapp import ShazamAppTrack
 from formattedstring import FormattedString
 import errors
-
-ALLOWED_FILE_TYPES = ['.aac', '.aiff', '.dsf', '.flac', '.m4a', '.mp3', '.ogg', '.opus', '.wav', '.wv']
+import magic
+from static_supported_values import ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES
 
 def is_file_type_allowed(file_extension):
   return file_extension in ALLOWED_FILE_TYPES
 
+def is_mime_supported(file_path):
+  mime = magic.from_file(file_path, mime=True)
+  return mime in ALLOWED_MIME_TYPES
+
 def identify_file(file_path, is_rename, is_preview, is_strict, discogs_api):
   file_extension = os.path.splitext(file_path)[1]
-  if is_file_type_allowed(file_extension):
+  if is_mime_supported(file_path):
     try:
       shazamapp = ShazamAppTrack(file_path, is_rename, is_preview, is_strict, discogs_api)
       shazamapp.identify_track()

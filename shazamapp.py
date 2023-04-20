@@ -99,7 +99,11 @@ class ShazamAppTrack:
     #print(f" {FormattedString().INFO}<< file renamed to: {new_file_name_with_extension} >>{FormattedString().END}")
 
   def __update_id3_tags(self):
-    file_handler = music_tag.load_file(self.file_path)
+    try:
+      file_handler = music_tag.load_file(self.file_path)
+    except:
+      print(f"{FormattedString().WARNING}[warning] {os.path.basename(self.file_path)} doesn't support ID3 tags{FormattedString().END}")
+      return
     file_handler.append_tag('comment', f"# ShazamApp {VERSION} Changes, {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
     if self.is_rename:
@@ -154,7 +158,10 @@ class ShazamAppTrack:
       else:
         discogs_result = discogs.get_track_details(self.song, self.artist, self.released, self.discogs_api)
         if discogs_result is not None and discogs_result['success']:
-          file_handler = music_tag.load_file(self.file_path)
+          try:
+            file_handler = music_tag.load_file(self.file_path)
+          except:
+            return True
           file_duration = str(file_handler["#length"])
           found_duration = discogs_result['duration']
 
@@ -174,9 +181,9 @@ class ShazamAppTrack:
       return True
 
   def print_track_details(self):
-    print(f"\r{FormattedString().SUCCESS}[ShazamApp] {os.path.basename(self.file_path)} >>> {self.artist} – {self.song}{FormattedString().END}", end='', flush=True)
+    print(f"\r{FormattedString().BOLD}{FormattedString().SUCCESS}[ShazamApp] Found {self.artist} – {self.song}{FormattedString().END} ({self.file_path})")
 
-    print(f" {FormattedString().INFO}[", end = "", flush = True)
+    print(f"{FormattedString().INFO}[", end = "", flush = True)
     tag_comma = ""
 
     if self.album is not None:
