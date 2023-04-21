@@ -11,6 +11,7 @@ from datetime import datetime
 import errors
 
 INVALID_FILENAME_CHARS = "/\\:*?\"<>|"
+MAX_TRACK_LENGTH_SECONGS_DIFFERENCE = 5
 
 class ShazamAppTrack:
   def __init__(self, file_path, is_rename, is_preview, is_strict, discogs_api):
@@ -23,7 +24,7 @@ class ShazamAppTrack:
     # Default tag values
     self.artist = ""
     self.song = ""
-    self.isrc = ""
+    self.isrc = None
     self.genres = []
     self.album = None
     self.label = None
@@ -51,7 +52,7 @@ class ShazamAppTrack:
       # Default tag values (some data are wrapped so we have to be careful)
       self.artist = track['subtitle'] if 'subtitle' in track else ""
       self.song = track['title'] if 'title' in track else ""
-      self.isrc = track['isrc'] if 'isrc' in track else ""
+      self.isrc = track['isrc'] if 'isrc' in track else None
       self.genres = [genre for genre in track['genres'].values()] if 'genres' in track else []
 
       # Get album artwork URL if available
@@ -94,9 +95,16 @@ class ShazamAppTrack:
     file_extension = os.path.splitext(self.file_path)[1]
     new_file_name_with_extension = file_new_name + file_extension
     new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
-    os.rename(self.file_path, new_file_path)
-    self.file_path = new_file_path
-    #print(f" {FormattedString().INFO}<< file renamed to: {new_file_name_with_extension} >>{FormattedString().END}")
+    #Check if new file path is already in use, if yes, add a number at the end
+    if self.file_path != new_file_path:
+      if os.path.exists(new_file_path):
+        i = 1
+        while os.path.exists(new_file_path):
+          new_file_name_with_extension = file_new_name + " (" + str(i) + ")" + file_extension
+          new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
+          i += 1
+      os.rename(self.file_path, new_file_path)
+      self.file_path = new_file_path
 
   def __update_id3_tags(self):
     try:
@@ -120,7 +128,7 @@ class ShazamAppTrack:
     if self.released is not None:
       file_handler.append_tag('comment', f"\n[Year] {file_handler['year']} -> {self.released}")
       file_handler['year'] = self.released
-    if self.isrc != "":
+    if self.isrc is not None:
       file_handler.append_tag('comment', f"\n[ISRC] {file_handler['isrc']} -> {self.isrc}")
       file_handler['isrc'] = self.isrc
 
@@ -139,14 +147,16 @@ class ShazamAppTrack:
       if genre not in file_genres:
         file_handler.append_tag('comment', genre + " ")
         file_handler.append_tag('genre', genre)
+
     # Check for album artwork, if available, set it to the file
-    response = requests.get(self.imageUrl)
-    if response.status_code == 200:
-      try:
-        file_handler['artwork'] = response.content
-        file_handler.append_tag('comment', f"\n[Album Artwork] Added")
-      except:
-        self.imageUrl = None
+    if self.imageUrl is not None:
+      response = requests.get(self.imageUrl)
+      if response.status_code == 200:
+        try:
+          file_handler['artwork'] = response.content
+          file_handler.append_tag('comment', f"\n[Album Artwork] Added")
+        except:
+          self.imageUrl = None
 
     file_handler.save()
 
@@ -158,6 +168,7 @@ class ShazamAppTrack:
       else:
         discogs_result = discogs.get_track_details(self.song, self.artist, self.released, self.discogs_api)
         if discogs_result is not None and discogs_result['success']:
+          #Check if file has option to store ID3 tags, if not, ignore strict mode
           try:
             file_handler = music_tag.load_file(self.file_path)
           except:
@@ -168,7 +179,7 @@ class ShazamAppTrack:
           if found_duration != "" and file_duration != "":
             #Convert found duration from MIN:SEC to seconds
             found_duration = float(found_duration.split(":")[0]) * 60 + int(found_duration.split(":")[1])
-            if abs(found_duration - float(file_duration)) > 5:
+            if abs(found_duration - float(file_duration)) > MAX_TRACK_LENGTH_SECONGS_DIFFERENCE:
               print(f"{FormattedString().WARNING}[ShazamApp] Strict mode is enabled and the track duration is not matching. Skipping track...{FormattedString().END}")
               return False
             else:
@@ -192,7 +203,7 @@ class ShazamAppTrack:
     if self.released is not None:
       print(f"{tag_comma} year: {self.released}", end = "", flush = True)
       tag_comma = ","
-    if self.isrc != "":
+    if self.isrc is not None:
       print(f"{tag_comma} ISRC: {self.isrc}", end = "", flush = True)
       tag_comma = ","
 
@@ -213,12 +224,11 @@ class ShazamAppTrack:
     result = self.__get_track_details()
 
     if result:
-      self.print_track_details()
-
       if self.is_preview is False:
         if self.is_strict_match():
           self.__update_id3_tags()
           if self.is_rename:
             self.__rename_file()
+      self.print_track_details()
     else:
       print(f"\r{FormattedString().ERROR}[ShazamApp] No match found for {self.file_path}{FormattedString().END}")
