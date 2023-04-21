@@ -2,7 +2,7 @@ import os
 import click
 import identification
 
-VERSION = "1.2.4"
+VERSION = "1.2.5"
 
 @click.command()
 @click.option('--path', '-f', default=".", help='Path to the specific file or folder in which the files will be browsed. If the value is not set manually, the current folder is automatically taken.')
@@ -13,7 +13,7 @@ VERSION = "1.2.4"
 @click.option('--strict', '-s', is_flag=True, help='If this parameter and token are set, ShazamApp will use Discogs API to get more details. If there will be match, then the track duration will be compared. If they are not the same, then the track will be skipped.')
 @click.option('--token', default="", help='Discogs Personal Access Token. You can get it here: https://www.discogs.com/settings/developers')
 def main(path, recursive, rename, preview, version, strict, token):
-    """ShazamApp reads all audio files from the specified folder, attempts to identify them, and if successful, sets the extracted audio file information to metadata.
+    """ShazamApp reads all audio files from the specified folder (or specific file), attempts to identify them, and if successful, sets the extracted audio file information to metadata.
     Let ShazamApp automatically organize your entire audio library.
 
     

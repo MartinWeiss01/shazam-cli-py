@@ -87,24 +87,24 @@ class ShazamAppTrack:
 
   def __rename_file(self):
     file_new_name = self.artist + " - " + self.song
-    
+
     for char in INVALID_FILENAME_CHARS:
       file_new_name = file_new_name.replace(char, "_")
 
-    path_parts = os.path.split(self.file_path)
+    file_abs_dir = os.path.split(self.file_path)[0]
     file_extension = os.path.splitext(self.file_path)[1]
-    new_file_name_with_extension = file_new_name + file_extension
-    new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
-    #Check if new file path is already in use, if yes, add a number at the end
-    if self.file_path != new_file_path:
-      if os.path.exists(new_file_path):
+    file_new_full_name = file_new_name + file_extension
+    file_new_path = os.path.join(file_abs_dir, file_new_full_name)
+    #Check if new file path is already in use by different file, if yes, add ("unused") number at the end
+    if self.file_path != file_new_path:
+      if os.path.exists(file_new_path):
         i = 1
-        while os.path.exists(new_file_path):
-          new_file_name_with_extension = file_new_name + " (" + str(i) + ")" + file_extension
-          new_file_path = os.path.join(path_parts[0], new_file_name_with_extension)
+        while os.path.exists(file_new_path):
+          file_new_full_name = f"{file_new_name} ({i}){file_extension}"
+          file_new_path = os.path.join(file_abs_dir, file_new_full_name)
           i += 1
-      os.rename(self.file_path, new_file_path)
-      self.file_path = new_file_path
+      os.rename(self.file_path, file_new_path)
+      self.file_path = file_new_path
 
   def __update_id3_tags(self):
     try:
@@ -112,30 +112,30 @@ class ShazamAppTrack:
     except:
       print(f"{FormattedString().WARNING}[warning] {os.path.basename(self.file_path)} doesn't support ID3 tags{FormattedString().END}")
       return
-    file_handler.append_tag('comment', f"# ShazamApp {VERSION} Changes, {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
+    # Log changes to comment tag
+    file_handler.append_tag('comment', f"# ShazamApp {VERSION} Changes, {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     if self.is_rename:
       file_handler.append_tag('comment', f"\n[Rename] {os.path.basename(self.file_path)} -> {self.artist} - {self.song}")
-
-    file_handler.append_tag('comment', f"\n[Artist] {file_handler['artist']} -> {self.artist}")
     file_handler['artist'] = self.artist
-    file_handler.append_tag('comment', f"\n[Track name] {file_handler['title']} -> {self.song}")
+    file_handler.append_tag('comment', f"\n[Artist] {file_handler['artist']} -> {self.artist}")
     file_handler['title'] = self.song
+    file_handler.append_tag('comment', f"\n[Track name] {file_handler['title']} -> {self.song}")
 
     if self.album is not None:
-      file_handler.append_tag('comment', f"\n[Album] {file_handler['album']} -> {self.album}")
       file_handler['album'] = self.album
+      file_handler.append_tag('comment', f"\n[Album] {file_handler['album']} -> {self.album}")
     if self.released is not None:
-      file_handler.append_tag('comment', f"\n[Year] {file_handler['year']} -> {self.released}")
       file_handler['year'] = self.released
+      file_handler.append_tag('comment', f"\n[Year] {file_handler['year']} -> {self.released}")
     if self.isrc is not None:
-      file_handler.append_tag('comment', f"\n[ISRC] {file_handler['isrc']} -> {self.isrc}")
       file_handler['isrc'] = self.isrc
+      file_handler.append_tag('comment', f"\n[ISRC] {file_handler['isrc']} -> {self.isrc}")
 
     # In case there are some lyrics, reset the existing ones and add the new ones
     if self.lyrics != []:
-      file_handler.append_tag('comment', "\n[Lyrics] Added")
       file_handler['lyrics'] = ""
+      file_handler.append_tag('comment', "\n[Lyrics] Added")
 
     for lyrics in self.lyrics:
       file_handler.append_tag('lyrics', "\n" + lyrics)

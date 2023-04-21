@@ -28,9 +28,9 @@ def identify_file(file_path, is_rename, is_preview, is_strict, discogs_api):
 
 # Browse directory_path and identify all found files (recursively if specified)
 def identify_folder_files(directory_path, is_recursive, is_rename, is_preview, is_strict, discogs_api):
-    for root, dirs, files in os.walk(directory_path):
-        for filename in files:
-            file_path = os.path.join(root, filename)
-            identify_file(file_path, is_rename, is_preview, is_strict, discogs_api)
-        if not is_recursive:
-            break
+  for root, dirs, files in os.walk(directory_path):
+    for filename in files:
+      file_path = os.path.join(root, filename)
+      identify_file(file_path, is_rename, is_preview, is_strict, discogs_api)
+    if not is_recursive:
+      break
