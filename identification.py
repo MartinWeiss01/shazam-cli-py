@@ -8,6 +8,8 @@ from static_supported_values import ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES
 def is_mime_supported(file_path):
   try:
     mime = magic.from_file(file_path, mime=True)
+    if (mime.startswith("cannot open")):
+      raise Error("Magic cannot open file")
     return mime in ALLOWED_MIME_TYPES
   except:
     file_extension = os.path.splitext(file_path)[1]
