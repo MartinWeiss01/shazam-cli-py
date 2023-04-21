@@ -5,15 +5,15 @@ import errors
 import magic
 from static_supported_values import ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES
 
-def is_file_type_allowed(file_extension):
-  return file_extension in ALLOWED_FILE_TYPES
-
 def is_mime_supported(file_path):
-  mime = magic.from_file(file_path, mime=True)
-  return mime in ALLOWED_MIME_TYPES
+  try:
+    mime = magic.from_file(file_path, mime=True)
+    return mime in ALLOWED_MIME_TYPES
+  except:
+    file_extension = os.path.splitext(file_path)[1]
+    return file_extension in ALLOWED_FILE_TYPES
 
 def identify_file(file_path, is_rename, is_preview, is_strict, discogs_api):
-  file_extension = os.path.splitext(file_path)[1]
   if is_mime_supported(file_path):
     try:
       shazamapp = ShazamAppTrack(file_path, is_rename, is_preview, is_strict, discogs_api)
@@ -25,8 +25,6 @@ def identify_file(file_path, is_rename, is_preview, is_strict, discogs_api):
       print(f"\r{FormattedString().ERROR}[ShazamApp] Permission denied for file: {file_path} is used by another process{FormattedString().END}")
     except errors.InvalidFileType:
       print(f"\r{FormattedString().ERROR}[ShazamApp] Invalid file {file_path}{FormattedString().END}")
-  #else:
-  #  print(f"{FormattedString().WARNING}[ShazamApp] Skipping {file_extension} file: {file_path}{FormattedString().END}")
 
 # Browse directory_path and identify all found files (recursively if specified)
 def identify_folder_files(directory_path, is_recursive, is_rename, is_preview, is_strict, discogs_api):
