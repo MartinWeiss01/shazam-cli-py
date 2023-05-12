@@ -3,17 +3,47 @@ from shazamapp import ShazamAppTrack
 from formattedstring import FormattedString
 import errors
 import magic
+import shutil
 from static_supported_values import ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES
 
-def is_mime_supported(file_path):
+DEFAULT_TEMPORARY_FILE_NAME = ".0001_shazam"
+
+def is_file_extension_supported(file_extension):
+  return file_extension in ALLOWED_FILE_TYPES
+
+def fallback_mime_support(file_path):
+  """
+    This function is used as a fallback when magic fails to identify the file type because of encoding issues.
+    It copies the file to a temporary file and checks MIME type again.
+    If it fails again, it checks the file extension.
+  """
+  file_extension = os.path.splitext(file_path)[1]
+  temp_file_path = f"{DEFAULT_TEMPORARY_FILE_NAME}{file_extension}"
+  
+  shutil.copyfile(file_path, temp_file_path)
+  try:
+    result = is_mime_supported(temp_file_path, False)
+  except:
+    pass
+  finally:
+    if(result is not True):
+      result = is_file_extension_supported(file_extension)
+    os.remove(temp_file_path)
+  return result
+
+def is_mime_supported(file_path, fallback = True):
   try:
     mime = magic.from_file(file_path, mime=True)
     if (mime.startswith("cannot open")):
       raise Error("Magic cannot open file")
     return mime in ALLOWED_MIME_TYPES
   except:
-    file_extension = os.path.splitext(file_path)[1]
-    return file_extension in ALLOWED_FILE_TYPES
+    if(fallback):
+      # Try to identify file without encoding issues or by file extension
+      return fallback_mime_support(file_path)
+    else:
+      # Avoid infinite recursion
+      return False
 
 def identify_file(file_path, is_rename, is_preview, is_strict, discogs_api):
   if is_mime_supported(file_path):
